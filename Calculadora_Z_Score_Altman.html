@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora Z-Score de Altman</title>
+<style>
+:root{--navy:#17365d;--blue:#2f75b5;--light:#eef5fb;--yellow:#fff2cc;--green:#dff0d8;--red:#f4cccc;--gray:#f3f5f7;--text:#263238}
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:var(--text);font-family:Segoe UI,Arial,sans-serif}
+.container{max-width:1100px;margin:28px auto;padding:0 18px}
+.card{background:#fff;border-radius:14px;box-shadow:0 4px 18px rgba(0,0,0,.08);overflow:hidden;margin-bottom:18px}
+.header{background:linear-gradient(135deg,#17365d,#2f75b5);color:#fff;padding:25px 28px}
+.header h1{margin:0 0 6px;font-size:28px}.header p{margin:0;opacity:.9}
+.section-title{background:var(--navy);color:#fff;padding:12px 16px;font-weight:700}
+table{width:100%;border-collapse:collapse}
+th{background:var(--blue);color:#fff;padding:10px;text-align:left}
+td{padding:9px;border-bottom:1px solid #e2e6ea}
+input[type=number]{width:100%;padding:9px;border:1px solid #c8d0d8;border-radius:7px;font-size:15px;background:var(--yellow)}
+input[type=number]:focus{outline:2px solid #9ec5e5}
+.value{text-align:right}
+.result{font-weight:700;text-align:right}
+.badge{display:inline-block;padding:9px 15px;border-radius:20px;font-weight:700}
+.safe{background:var(--green);color:#286b2b}.gray{background:var(--yellow);color:#7a5b00}.risk{background:var(--red);color:#9b1c1c}
+.zbox{display:flex;gap:22px;align-items:center;justify-content:center;padding:25px;flex-wrap:wrap}
+.zscore{font-size:42px;font-weight:800;color:var(--navy)}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;padding:18px}
+.metric{background:var(--gray);border-radius:10px;padding:15px}
+.metric small{display:block;color:#65727e;margin-bottom:5px}.metric strong{font-size:21px}
+.note{padding:18px;color:#59636e;font-size:13px;line-height:1.55}
+button{border:0;border-radius:8px;padding:10px 16px;font-weight:700;cursor:pointer}
+.primary{background:var(--navy);color:white}.secondary{background:#e7edf3;color:#17365d}
+.actions{display:flex;gap:10px;padding:0 18px 18px}
+.contrib td:last-child,.calc td:nth-child(5){font-weight:700}
+@media(max-width:700px){.grid{grid-template-columns:1fr}.header h1{font-size:23px}table{font-size:13px}.container{margin:10px auto;padding:0 8px}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="card">
+    <div class="header">
+      <h1>Calculadora Z-Score de Altman</h1>
+      <p>Modelo original para empresas públicas · Cálculo automático</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">1. Datos financieros de entrada</div>
+    <table>
+      <thead><tr><th>Partida financiera</th><th>Valor</th><th>Utilización</th></tr></thead>
+      <tbody>
+        <tr><td>Capital de trabajo</td><td><input id="workingCapital" type="number" step="any" placeholder="0"></td><td>X₁</td></tr>
+        <tr><td>Utilidades retenidas</td><td><input id="retained" type="number" step="any" placeholder="0"></td><td>X₂</td></tr>
+        <tr><td>EBIT</td><td><input id="ebit" type="number" step="any" placeholder="0"></td><td>X₃</td></tr>
+        <tr><td>Valor de mercado del patrimonio</td><td><input id="marketEquity" type="number" step="any" placeholder="0"></td><td>X₄</td></tr>
+        <tr><td>Pasivos totales</td><td><input id="liabilities" type="number" step="any" placeholder="0"></td><td>X₄</td></tr>
+        <tr><td>Activos totales</td><td><input id="assets" type="number" step="any" placeholder="0"></td><td>X₁, X₂, X₃, X₅</td></tr>
+        <tr><td>Ventas</td><td><input id="sales" type="number" step="any" placeholder="0"></td><td>X₅</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="section-title">2. Variables X₁–X₅</div>
+    <table class="calc">
+      <thead><tr><th>Variable</th><th>Razón financiera</th><th>Numerador</th><th>Denominador</th><th>Resultado X</th><th>Coef.</th></tr></thead>
+      <tbody>
+        <tr><td>X₁</td><td>Capital de trabajo / Activos totales</td><td id="n1">0</td><td id="d1">0</td><td id="x1">0.0000</td><td>1.2</td></tr>
+        <tr><td>X₂</td><td>Utilidades retenidas / Activos totales</td><td id="n2">0</td><td id="d2">0</td><td id="x2">0.0000</td><td>1.4</td></tr>
+        <tr><td>X₃</td><td>EBIT / Activos totales</td><td id="n3">0</td><td id="d3">0</td><td id="x3">0.0000</td><td>3.3</td></tr>
+        <tr><td>X₄</td><td>Patrimonio de mercado / Pasivos totales</td><td id="n4">0</td><td id="d4">0</td><td id="x4">0.0000</td><td>0.6</td></tr>
+        <tr><td>X₅</td><td>Ventas / Activos totales</td><td id="n5">0</td><td id="d5">0</td><td id="x5">0.0000</td><td>1.0</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="section-title">3. Contribución al Z-Score</div>
+    <table class="contrib">
+      <thead><tr><th>Variable</th><th>Resultado X</th><th>Coeficiente</th><th>Contribución</th></tr></thead>
+      <tbody>
+        <tr><td>X₁</td><td id="cx1">0.0000</td><td>1.2</td><td id="c1">0.0000</td></tr>
+        <tr><td>X₂</td><td id="cx2">0.0000</td><td>1.4</td><td id="c2">0.0000</td></tr>
+        <tr><td>X₃</td><td id="cx3">0.0000</td><td>3.3</td><td id="c3">0.0000</td></tr>
+        <tr><td>X₄</td><td id="cx4">0.0000</td><td>0.6</td><td id="c4">0.0000</td></tr>
+        <tr><td>X₅</td><td id="cx5">0.0000</td><td>1.0</td><td id="c5">0.0000</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="section-title">4. Resultado</div>
+    <div class="zbox">
+      <div>
+        <div style="color:#65727e">Z-Score de Altman</div>
+        <div class="zscore" id="zscore">0.00</div>
+      </div>
+      <div id="classification" class="badge gray">Ingrese los datos</div>
+    </div>
+    <div class="grid">
+      <div class="metric"><small>&gt; 2.99</small><strong>Zona segura</strong></div>
+      <div class="metric"><small>1.81 – 2.99</small><strong>Zona gris</strong></div>
+      <div class="metric"><small>&lt; 1.81</small><strong>Zona de riesgo</strong></div>
+      <div class="metric"><small>Fórmula</small><strong>Z = 1.2X₁ + 1.4X₂ + 3.3X₃ + 0.6X₄ + X₅</strong></div>
+    </div>
+    <div class="actions">
+      <button class="primary" onclick="window.print()">Imprimir / Guardar PDF</button>
+      <button class="secondary" onclick="resetCalc()">Limpiar</button>
+    </div>
+    <div class="note">
+      <strong>Nota metodológica:</strong> esta calculadora utiliza el modelo Z-Score original de Altman para empresas públicas.
+      El Z-Score es un indicador de riesgo financiero y <strong>no equivale directamente a una PD</strong>.
+      Para empresas privadas o no cotizadas pueden ser más apropiadas las versiones Z' o Z''.
+    </div>
+  </div>
+</div>
+
+<script>
+const ids=["workingCapital","retained","ebit","marketEquity","liabilities","assets","sales"];
+const num=id=>parseFloat(document.getElementById(id).value)||0;
+const fmt=x=>Number.isFinite(x)?x.toLocaleString("es-PA",{minimumFractionDigits:4,maximumFractionDigits:4}):"0.0000";
+const fmt2=x=>Number.isFinite(x)?x.toLocaleString("es-PA",{minimumFractionDigits:2,maximumFractionDigits:2}):"0.00";
+
+function ratio(a,b){return b!==0?a/b:0}
+function set(id,val){document.getElementById(id).textContent=fmt(val)}
+
+function calculate(){
+  const wc=num("workingCapital"), re=num("retained"), ebit=num("ebit"),
+        me=num("marketEquity"), liab=num("liabilities"), assets=num("assets"), sales=num("sales");
+
+  const x1=ratio(wc,assets), x2=ratio(re,assets), x3=ratio(ebit,assets),
+        x4=ratio(me,liab), x5=ratio(sales,assets);
+  const c1=x1*1.2,c2=x2*1.4,c3=x3*3.3,c4=x4*.6,c5=x5;
+  const z=c1+c2+c3+c4+c5;
+
+  [["n1",wc],["d1",assets],["x1",x1],["n2",re],["d2",assets],["x2",x2],
+   ["n3",ebit],["d3",assets],["x3",x3],["n4",me],["d4",liab],["x4",x4],
+   ["n5",sales],["d5",assets],["x5",x5],
+   ["cx1",x1],["c1",c1],["cx2",x2],["c2",c2],["cx3",x3],["c3",c3],
+   ["cx4",x4],["c4",c4],["cx5",x5],["c5",c5]].forEach(([id,v])=>set(id,v));
+
+  document.getElementById("zscore").textContent=fmt2(z);
+  const badge=document.getElementById("classification");
+  if(z>2.99){badge.textContent="Zona segura";badge.className="badge safe"}
+  else if(z>=1.81){badge.textContent="Zona gris";badge.className="badge gray"}
+  else if(z!==0){badge.textContent="Zona de riesgo";badge.className="badge risk"}
+  else {badge.textContent="Ingrese los datos";badge.className="badge gray"}
+}
+function resetCalc(){
+  ids.forEach(id=>document.getElementById(id).value="");
+  calculate();
+}
+ids.forEach(id=>document.getElementById(id).addEventListener("input",calculate));
+calculate();
+</script>
+</body>
+</html>
